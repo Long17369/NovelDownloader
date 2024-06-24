@@ -36,8 +36,9 @@ def 获取网页(num):
     for i in range(len(NUM)):
         if i == 0:
             i = len(NUM)
-        HTMLi = requests.get(
-            "https://m.ethxs.com/chapters_"+str(num)+'/'+str(i)).text
+        URL = "https://m.ethxs.com/chapters_"+str(num)+'/'+str(i)
+        print(URL)
+        HTMLi = requests.get(URL).text
         HTMLi.split("章节列表")
         for j in List3[1].split("href"):
             href[len(href)] = j
