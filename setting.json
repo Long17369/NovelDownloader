@@ -1,0 +1,19 @@
+{
+    "fileinfo": {
+        "Version": "1.0.0.0",
+        "Date": "2024/06/24 20:00",
+        "Author": "Long17369"
+    },
+    "url": {
+        "Search": {
+            "http://www.shukuge.com/Search?wd=": [
+                true,
+                "wd"
+            ],
+            "https://m.ethxs.com/search.html": [
+                true,
+                "s"
+            ]
+        }
+    }
+}
