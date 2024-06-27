@@ -5,18 +5,43 @@ Author : Long17369
 """
 
 
-from typing import Dict, List
+from typing import Dict, List, Any
 import requests
 
 
 error = []
+All: Dict[str, Any] = {
+    'onDecode': {}
+}
+Translate = {
+    'type': '类型',
+    'title': '小说名',
+    'description': '标签',
+    'image': '封面',
+    'novel:category': '小说分类',
+    'novel:author': '小说作者',
+    'novel:book_name': '小说书名',
+    'novel:read_url': '目前阅读url',
+    'url': '下载url',
+    'novel:status': '连载状态',
+    'novel:update_time': '上次更新时间',
+    'novel:latest_chapter_name': '最新章节',
+    'og:novel:latest_chapter_url': '最新章节url'
+}
 
 
 def printList(List0):
     print("print List start")
-    for i in range(len(List0)):
-        print(i, List0[i])
-    print("print List End")
+    if len(List0) != 0:
+        for i in range(len(List0)):
+            print(i, List0[i])
+        print("print List End")
+
+
+def printDict(Dict1):
+    if Dict1 != {}:
+        for i in Dict1:
+            print(i, Dict1[i])
 
 
 def printError(Error):
@@ -41,20 +66,21 @@ def 获取网页(num):
     url = 'chapters_' + str(num) + '/1'
     sign = []
     HTML = requests.get("https://m.ethxs.com/" + url).text
-    Property = []
+    Property = {}
     # href 格式: dict[int, list['url','chapter_name']]
     href: Dict[int, list] = {}
     List1 = HTML.split("<meta")
     for i in List1:
         if "property" in i:
-            Property.append(i.split("content")[1].split('"')[1])
-            # print(Property)
+            Property[i.split('"')[1][3::]] = i.split(
+                "content")[1].split('"')[1]
+            printDict(Property)
     List2 = List1[-1].split("章节列表")
     # printList(List2)
     List3 = List2[1].split("page_num")
     # printList(List3)
     NUM = [i.split('"')[1] for i in List3[1].split('value=')]
-    printList(NUM)
+    # printList(NUM)
     for i in range(len(NUM)-1):
         if i == 0:
             i = len(NUM)
@@ -64,8 +90,8 @@ def 获取网页(num):
         for j in HTMLi.split("章节列表")[1].split("page_num")[1].split("href")[4::]:
             Temp = j.split('"')
             href[len(href)] = [Temp[1], Temp[2].split('>')[1].split('<')[0]]
-    printList(href)
-    return href
+    # printList(href)
+    return href, Property
 
 
 def 获取正文(href) -> Dict[str, str]:
@@ -73,7 +99,7 @@ def 获取正文(href) -> Dict[str, str]:
     href指一章小说的第一页
     """
     page = 0
-    print(href[1])
+    # print(href[1])
     Text = ''
     while True:
         if page == 0:
@@ -81,22 +107,27 @@ def 获取正文(href) -> Dict[str, str]:
         else:
             pageUrl = "https://m.ethxs.com/" + \
                 href[0].split(".html")[0] + '_' + str(page) + ".html"
-        print(pageUrl)
+        # print(pageUrl)
         respond = requests.get(pageUrl, allow_redirects=False)
-        print(respond.status_code)
+        # print(respond.status_code)
         if respond.status_code == 301:
             break
         HTML = respond.text
         List1 = HTML.split('id="txt"')[1].split(
             '</br>')[0].split("/script")[:-1:]
-        for x in range(len(List1)):
-            print("    ", x,List1[x].split("'")[1])
+        # for x in range(len(List1)):
+        #     print("    ", x,List1[x].split("'")[1])
         page += 1
-        print(len(List1))
+        # print(len(List1))
         for x in range(len(List1)):
-            print(x)
+            # print(x)
+            All['onDecode'][x] = List1[x].split("'")[1]
             Text += 翻译小说正文(List1[x].split("'")[1]) + '\n'
-    return {"chapter_name": href[1], "text": Text}
+        All['onDecode'] = {}
+        print(end='█')
+    output = {"chapter_name": href[1], "text": Text}
+    # printDict(output)
+    return output
 
 
 def 翻译小说正文(input: str) -> str:
@@ -132,27 +163,53 @@ def 翻译小说正文(input: str) -> str:
         elif c[0] > 191 and c[0] < 224:
             c[1] = ord(utftext[n+1])
             output += chr(((c[0] & 31) << 6) | (c[1] & 63))
+            n += 2
         else:
-            printList(c)
-            printList([ord(utftext[x]) for x in range(len(utftext))])
-            print(n)
+            # printList(c)
+            # printList([ord(utftext[x]) for x in range(len(utftext))])
+            # print(n)
             c[1] = ord(utftext[n + 1])
-            print(utftext[n + 2])
+            # print(utftext[n + 2])
             c[2] = ord(utftext[n + 2])
             output += chr(((c[0] & 15) << 12) |
                           ((c[1] & 63) << 6) | (c[2] & 63))
             n += 3
-    print(output)
-    return output
+        # print(end=' ')
+    # print(output[3:-7:])
+    # print(end='█')
+    return output[3:-6:]
+
+
+def main(url: (str or int), name: str = ''):
+    num = 处理网址(url)
+    href, Property = 获取网页(num)
+    All['text'] = []
+    for i in range(len(href)):
+        print('\n正在下载:第', i+1, '章', end='')
+        All['text'].append(获取正文(href[i]))
+    printList(All['text'])
+    printList(error)
+    if name == '':
+        name = Property['title']
+    with open(name+'.txt', 'w', encoding='utf-8') as f:
+        for i in Property:
+            if 'url' in i:
+                continue
+            try:
+                f.write('{}.{}'.format(Translate[i], Property[i]))
+            except:
+                f.write('{}.{}'.format(i, Property[i]))
+            f.write('\n')
+        f.write('\n'*2)
+        f.write('源数据:\n')
+        f.write(str(Property))
+        f.write('\n'*2)
+        f.write('\n')
+        for x in All['text']:
+            f.write(x['chapter_name'])
+            f.write('\n')
+            f.write(x['text'])
 
 
 if __name__ == "__main__":
-    url = input("网页https://m.ethxs.com/")
-    num = 处理网址(url)
-    href = 获取网页(num)
-    text: List[Dict[str, str]] = [{}]
-    for i in range(len(href)):
-        text.append(获取正文(href[i]))
-    print(text)
-    printList(error)
-    # print('结果:', url)
+    main(input("网页: https://m.ethxs.com/"))
