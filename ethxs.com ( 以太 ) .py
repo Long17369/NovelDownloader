@@ -1,12 +1,13 @@
 """获取ethxs.com(以太小说网的小说)
-Version : 1.0.0.0
-Date : 2024/06/24 20:00
+Version : 1.0.0.1
+Date : 2024/06/27 22:08
 Author : Long17369
 """
 
 
 from typing import Dict, List, Any
 import requests
+from time import process_time
 
 
 error = []
@@ -181,13 +182,17 @@ def 翻译小说正文(input: str) -> str:
 
 
 def main(url: (str or int), name: str = ''):
+    time_0 = process_time()
     num = 处理网址(url)
     href, Property = 获取网页(num)
     All['text'] = []
     for i in range(len(href)):
         print('\n正在下载:第', i+1, '章', end='')
         All['text'].append(获取正文(href[i]))
-    printList(All['text'])
+    time_1 = process_time()
+    print('下载完成，共耗时',time_1,'秒')
+    print('平均速度：','{}s/章'.format(time_1/len(href)))
+    # printList(All['text'])
     printList(error)
     if name == '':
         name = Property['title']
