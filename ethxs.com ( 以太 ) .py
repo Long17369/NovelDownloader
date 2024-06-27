@@ -218,3 +218,4 @@ def main(url: (str or int), name: str = ''):
 
 if __name__ == "__main__":
     main(input("网页: https://m.ethxs.com/"))
+    input('按任意键退出')
