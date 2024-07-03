@@ -7,7 +7,7 @@ Author : Long17369
 
 from typing import Dict, List, Any
 import requests
-from time import process_time
+import time 
 
 
 error = []
@@ -17,7 +17,7 @@ All: Dict[str, Any] = {
 Translate = {
     'type': '类型',
     'title': '小说名',
-    'description': '标签',
+    'description': '简介',
     'image': '封面',
     'novel:category': '小说分类',
     'novel:author': '小说作者',
@@ -75,7 +75,7 @@ def 获取网页(num):
         if "property" in i:
             Property[i.split('"')[1][3::]] = i.split(
                 "content")[1].split('"')[1]
-            printDict(Property)
+            # printDict(Property)
     List2 = List1[-1].split("章节列表")
     # printList(List2)
     List3 = List2[1].split("page_num")
@@ -182,16 +182,16 @@ def 翻译小说正文(input: str) -> str:
 
 
 def main(url: (str or int), name: str = ''):
-    time_0 = process_time()
+    time_0 = time.time()
     num = 处理网址(url)
     href, Property = 获取网页(num)
     All['text'] = []
     for i in range(len(href)):
         print('\n正在下载:第', i+1, '章', end='')
         All['text'].append(获取正文(href[i]))
-    time_1 = process_time()
-    print('下载完成，共耗时',time_1,'秒')
-    print('平均速度：','{}s/章'.format(time_1/len(href)))
+    time_1 = time.time()
+    print('下载完成，共耗时',time_1-time_0,'秒')
+    print('平均速度：','{}s/章'.format((time_1-time_0)/len(href)))
     # printList(All['text'])
     printList(error)
     if name == '':
