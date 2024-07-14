@@ -1,6 +1,6 @@
 """获取ethxs.com(以太小说网的小说)
-Version : 1.0.0.1
-Date : 2024/06/27 22:08
+Version : 1.0.0.2
+Date : 2024/07/02 15:00
 Author : Long17369
 """
 
