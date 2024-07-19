@@ -433,6 +433,7 @@ class Main():
                 data = json.load(f)
                 # 更新数据字典中当前进度的信息
                 data[self.info['name']] = self.info['progress']
+                f.seek(0)
                 json.dump(data, f, ensure_ascii=False, indent=4)
         except json.JSONDecodeError:
             # 如果文件格式不正确，删除文件并递归调用自身重新尝试
