@@ -15,12 +15,13 @@ import bs4
 
 class Main:
     def __init__(self,):
-        self.href: Dict[int, List[str]]
-        self.no: Dict[int, str]
+        self.href: Dict[int, List[str]] = {}
+        self.failed : List[int] = []
+        self.no: Dict[int, str] = {}
         self.text: Dict[int, Dict[int, str]] = {}
         self.exeCrawl: Dict[str, thread.ThreadPoolExecutor] = {}
         self.exeResults: Dict[str, List[_base.Future]] = {}
-        self.info : Dict[str, Any]
+        self.info : Dict[str, Any] = {}
         self.ifproxies = False
         self.proxies = {
             'http': '',
@@ -53,15 +54,15 @@ class Main:
                 else:
                     raise
 
-    def GetPageN(self, url, Chapter: int, Page: int, error: int = 0) -> bool:
+    def GetPageN(self, url, Chapter: int, Page: int) -> bool:
         res = self.get(url)
         if res.status_code == 404:
             return False
         res.encoding = 'utf-8'
         soup = bs4.BeautifulSoup(res.text,'html.parser')
         tags = soup.find_all('div',id="chaptercontent")[0]
-        tag = [i.text.replace('\r') for i in tags.find_all('p')]
-        self.text[Chapter][Page] = ''.join(tag)
+        tag = [i.text.replace('\r','') for i in tags.find_all('p')]
+        self.text[Chapter][Page] = '\n'.join(tag)
         return True
 
     def save_progress(self):
@@ -130,17 +131,17 @@ class Main:
     def Get_property(self, num) -> Dict[str, str]:
         res = self.get(f'https://www.rhmm18.com/{num//1000}_{num}/')
         soup = bs4.BeautifulSoup(res.text, 'html.parser')
-        Property = {i['property']: i['content'] for i in [
+        Property = {i['property'][3:]: i['content'] for i in [
             i.attrs for i in soup.find_all('meta')] if 'property' in i}
         return Property
 
-    def Get_Chapter(self, mun, error: int = 0):
-        self.href = {}
+    def Get_Chapter(self, num):
         href: Dict[int, List[str]] = {}
         Page = 1
-        url = f'https://www.rhmm18.com/indexlist/{mun}/'+'{Page}/'
+        url = f'https://www.rhmm18.com/indexlist/{num}/'+'{Page}/'
         while True:
-            res = self.get(url.format(Page))
+            print(url.format(Page=Page))
+            res = self.get(url.format(Page=Page))
             if res.status_code == 404:
                 break
             else:
@@ -152,33 +153,92 @@ class Main:
                 for i in range(len(Href)):
                     if 'class' in Href[i]:
                         Href[i]['href'] = ''
-                        self.no[i+1] = Href[i]['title']
                     else:
-                        Href[i]['href'] = Href[i]['onclick'].split("/")[-1][:-5]
-                    href = {i+1: [Href[i]['href'], Href[i]['title']]
-                            for i in range(len(Href)) if Href[i]['href'] is not ''}
-                self.href.update(href)
+                        Href[i]['href'] = Href[i]['onclick'].split("/")[-1][:-6]
+                for i in range(len(Href)):
+                    href[len(href)+1] = [Href[i]['href'],Href[i]['title']]
+        self.no = {i:href[i][1] for i in href if href[i][0]==''}
+        return href
 
     def urlhandler(self, url: Union[str, int]):
         if isinstance(url, int):
             return url
         else:
             url = url.split('_')[-1]
+            return int(url)
 
     def Crawler(self, N: int, href: List[str]):
-        ...
+        if str(N) in (self.info['progress']['Chapter_size']):
+            if os.path.getsize(f'./txt/Cache/{self.info["title"]}/{N}') == self.info['progress']['Chapter_size'][str(N)]:
+                return True
+        print(f'正在下载{href[1]}')
+        page = 1
+        self.text[N] = {}
+        while page >= 1:
+            if page == 1:
+                pageurl = f'https://www.rhmm18.com/{self.num//1000}_{self.num}/{href[0]}.html'
+            else:
+                pageurl = f'https://www.rhmm18.com/{self.num//1000}_{self.num}/{href[0]}_{page}.html'
+            print(f'下载第{page}页')
+            if self.GetPageN(pageurl,N,page):
+                page += 1
+            elif page == 1:
+                self.failed.append(N)
+                print(f'第{N}章下载失败')
+                return False
+            else:
+                page = -1
+        self.Write(N,href[1])
+        if N in self.failed:
+            self.failed.remove(N)
+        return True
+
+    def Write(self, Chapter: int, Chapter_Name) -> None:
+        if os.path.exists(f'./txt/Cache/{self.info["title"]}/{Chapter}'):
+            os.remove(f'./txt/Cache/{self.info["title"]}/{Chapter}')
+        with open(f'./txt/Cache/{self.info["title"]}/{Chapter}', 'w', encoding='utf-8') as f:
+            f.write(f'{Chapter_Name}\n')
+            f.write('\n '.join([self.text[Chapter][i] for i in self.text[Chapter]]))
+        self.info['progress']['Chapter_size'][str(Chapter)] = os.path.getsize(f'./txt/Cache/{self.info["title"]}/{Chapter}')
+        del self.text[Chapter]
+
+    def WriteAll(self):
+        Chapter = [int(i) for i in self.info['progress']
+                   ['Chapter_size'] if isinstance(i, str)]
+        Chapter.sort()
+        # 初始化将要保存的小说文件
+        with open(f'./txt/{self.info["title"]}.txt', 'w', encoding='utf-8') as f:
+            ...
+        # 遍历章节列表，读取每个章节的内容
+        for i in Chapter:
+            # 以只读模式打开当前章节文件
+            with open(f'./txt/Cache/{self.info["title"]}/{i}', 'r', encoding='utf-8') as f:
+                # 以写入模式打开目标文件
+                with open(f'./txt/{self.info["title"]}.txt', 'a', encoding='utf-8') as f1:
+                    # 将当前章节内容写入目标文件
+                    f1.write(f.read())
+                    # 在每个章节之间添加空行，以区分不同章节
+                    f1.write('\n\n\n')
+        # 遍历info字典，将非进度信息合并到进度信息的info字段中
+        self.info['progress']['info'] = {}
+        for i in self.info:
+            if i == 'progress':
+                continue
+            self.info['progress']['info'][i] = self.info[i]
+        print('小说下载成功！')
 
     def No(self, N:int):
         for i in range(int(self.href[N-1][0]), int(self.href[N+1][0])):
             try:
-                self.Crawler(N,[str(i),self.no[N]])
-                break
+                if self.Crawler(N,[str(i),self.no[N]]):
+                    return
             except:
                 pass
 
     def main(self, url: Union[str, int], name: str = '', max_workers: int = 5):
         num = self.urlhandler(url)
-        self.Get_Chapter(num)
+        self.num = num
+        self.href = self.Get_Chapter(num)
         Property = self.Get_property(num)
         if name == '':
             self.info['name'] = Property['title']
@@ -193,5 +253,12 @@ class Main:
         self.exeCrawl['main'] = ThreadPoolExecutor(max_workers)
         # 将多个任务提交给线程池
         self.exeResults['main'] = [self.exeCrawl['main'].submit(
-            self.Crawler, i,self.href[i])for i in self.href]
+            self.Crawler, i,self.href[i])for i in self.href if self.href[i][0] != '']
         self.exeResults['main'] += [self.exeCrawl['main'].submit(self.No,i)for i in self.no]
+        for i in self.exeResults['main']:
+            try:
+                i.result()
+            except:
+                pass
+        self.WriteAll()
+        self.save_progress()
