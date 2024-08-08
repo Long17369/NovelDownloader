@@ -179,7 +179,7 @@ class Main:
                 pageurl = f'https://www.rhmm18.com/{self.num//1000}_{self.num}/{href[0]}.html'
             else:
                 pageurl = f'https://www.rhmm18.com/{self.num//1000}_{self.num}/{href[0]}_{page}.html'
-            print(f'下载第{page}页')
+            # print(f'下载第{page}页')
             if self.GetPageN(pageurl,N,page):
                 page += 1
             elif page == 1:
