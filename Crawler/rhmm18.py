@@ -1,5 +1,5 @@
 """获取rhmm18.com(零点看书)
-Version : 1.0.0.00(未完工)
+Version : 1.0.1.00
 Date : 2024/08/06 13:20
 Author : Long17369
 """
@@ -18,6 +18,7 @@ class Main:
         self.href: Dict[int, List[str]] = {}
         self.failed : List[int] = []
         self.no: Dict[int, str] = {}
+        self.reno: Dict[int, str] = {}
         self.text: Dict[int, Dict[int, str]] = {}
         self.exeCrawl: Dict[str, thread.ThreadPoolExecutor] = {}
         self.exeResults: Dict[str, List[_base.Future]] = {}
@@ -168,8 +169,9 @@ class Main:
             return int(url)
 
     def Crawler(self, N: int, href: List[str]):
-        if str(N) in (self.info['progress']['Chapter_size']):
+        if str(N) in (self.info['progress']['Chapter_size']) and os.path.exists(f'./txt/Cache/{self.info["title"]}/{N}'):
             if os.path.getsize(f'./txt/Cache/{self.info["title"]}/{N}') == self.info['progress']['Chapter_size'][str(N)]:
+                print(f'第{N}章已下载')
                 return True
         print(f'正在下载{href[1]}')
         page = 1
@@ -228,12 +230,24 @@ class Main:
         print('小说下载成功！')
 
     def No(self, N:int):
-        for i in range(int(self.href[N-1][0]), int(self.href[N+1][0])):
-            try:
-                if self.Crawler(N,[str(i),self.no[N]]):
-                    return
-            except:
-                pass
+        if int(self.href[N+1][0]) - int(self.href[N-1][0]) < 50:
+            for i in range(int(self.href[N-1][0])+1, int(self.href[N+1][0])):
+                try:
+                    if self.Crawler(N,[str(i),self.no[N]]):
+                        return
+                except:
+                    pass
+        else:
+            print(f'请手动下载第{N}章')
+            self.failed.append(N)
+            self.reno[N] = self.no[N]
+
+    def reNo(self, N:int):
+        i = input(f'手动下载第{N}章,请输入章节地址')
+        if isinstance(i, int):
+            self.Crawler(N,[i,self.no[N]])
+        else:
+            self.reNo(N)
 
     def main(self, url: Union[str, int], name: str = '', max_workers: int = 5):
         num = self.urlhandler(url)
@@ -260,5 +274,7 @@ class Main:
                 i.result()
             except:
                 pass
+        for i in self.reno:
+            self.reNo(i)
         self.WriteAll()
         self.save_progress()
