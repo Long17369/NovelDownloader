@@ -1,1 +1,1 @@
-from Crawler.rhmm18 import Main
+# Main entry point - removed rhmm18 as it is no longer working
