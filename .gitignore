@@ -164,4 +164,5 @@ cython_debug/
 
 #Downlaod file
 *.txt
+!requirements.txt
 txt/
