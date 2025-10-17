@@ -1,1 +1,1 @@
-# Main entry point - removed rhmm18 as it is no longer working
+from Crawler.ethxs import Main as EthxsCrawler
