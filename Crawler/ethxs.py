@@ -13,6 +13,7 @@ from typing import Any, Dict, List, Union
 
 import bs4
 import requests
+from tqdm import tqdm
 
 
 class Main:
@@ -43,6 +44,8 @@ class Main:
         # 定义一个字典，用于存储代理信息（请自行使用）
         self.proxies = {"http": "", "https": ""}
         self.error: Dict[int, _base.Future] = {}
+        # 定义进度条对象，用于显示下载进度
+        self.progress_bar = None
 
     def load_progress(self):
         """
@@ -122,9 +125,9 @@ class Main:
                 os.path.getsize(f'./txt/Cache/{self.info["title"]}/{chapter_num}')
                 == self.info["progress"]["Chapter_size"][str(chapter_num)]
             ):
+                if self.progress_bar:
+                    self.progress_bar.update(1)
                 return
-        # 输出开始下载的提示信息
-        print(f"开始下载第{chapter_num}章")
         page = 0
         self.code[chapter_num] = {}
         # 开始循环下载页面，直到无法获取页面为止
@@ -150,12 +153,17 @@ class Main:
                 # 如果无法获取到页面，结束爬取
                 page = -1
         if self.code[chapter_num] == {}:
-            print(f"第{chapter_num}章下载失败")
+            if self.progress_bar:
+                self.progress_bar.set_description(f"第{chapter_num}章下载失败")
+                self.progress_bar.update(1)
             return
         # 解码下载的章节内容
         self.decode(chapter=chapter_num)
         # 将解码后的章节写入文件
         self.write(chapter_num, href[1])
+        # 更新进度条
+        if self.progress_bar:
+            self.progress_bar.update(1)
 
     def get_page(self, url, chapter: int, page: int, error: int = 0) -> bool:
         """
@@ -462,6 +470,17 @@ class Main:
         os.makedirs(f'./txt/Cache/{self.info["title"]}/', exist_ok=True)
         # 初始化一个名为'main'的线程池执行器，用于执行主要任务
         self.executor_crawl["main"] = ThreadPoolExecutor(max_workers)
+        
+        # 创建进度条，显示章节下载进度
+        total_chapters = len(href_dict)
+        self.progress_bar = tqdm(
+            total=total_chapters,
+            desc="下载进度",
+            unit="章",
+            ncols=100,
+            bar_format='{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]'
+        )
+        
         # 将多个任务提交给线程池
         self.executor_results["main"] = [
             self.executor_crawl["main"].submit(self.crawler, i + 1, href_dict[i])
@@ -474,6 +493,10 @@ class Main:
                 self.executor_results["main"][i].result()
             except Exception as e:
                 self.error[i] = self.executor_results["main"][i]
+        
+        # 关闭进度条
+        if self.progress_bar:
+            self.progress_bar.close()
 
         self.write_all()
         # 保存更新后的进度信息
