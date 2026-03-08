@@ -1,1 +1,9 @@
-from Crawler.ethxs import Main as EthxsCrawler
+"""
+main 的 Docstring
+"""
+
+from src.core.plugin_loader import PluginLoader
+
+def main():
+    pl = PluginLoader()
+
