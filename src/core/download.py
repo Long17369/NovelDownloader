@@ -3,8 +3,9 @@ core.download 的 Docstring
 """
 
 from asyncio import gather, create_task
+from typing import Iterable, overload
 
-from .base import BasePlugin, ChapterInfo
+from .base import BasePlugin, ChapterInfo, NovelInfo
 from .logger import get_logger
 
 
@@ -12,21 +13,41 @@ logger = get_logger(__name__)
 
 
 class Download:
+    @overload
     async def download_novel(
         self,
         plugin_list: list[tuple[int, BasePlugin]],
-        url: str | list[str],
+        url: str,
         check_support: bool = True,
-    ):
+    ) -> NovelInfo | None: ...
+
+    @overload
+    async def download_novel(
+        self,
+        plugin_list: list[tuple[int, BasePlugin]],
+        url: Iterable[str],
+        check_support: bool = True,
+    ) -> Iterable[NovelInfo | None]: ...
+
+    async def download_novel(
+        self,
+        plugin_list: list[tuple[int, BasePlugin]],
+        url: str | Iterable[str],
+        check_support: bool = True,
+    ) -> NovelInfo | None | Iterable[NovelInfo | None]:
         """下载小说"""
         try:
-            if isinstance(url, list):
+            if not isinstance(url, str):
                 for u in url:
                     create_task(self.download_novel(plugin_list, u, check_support))
-                return
+                return await gather(
+                    *[self.download_novel(plugin_list, u, check_support) for u in url]
+                )
 
             if check_support:
-                has_support, plugin = await self.select_supported_plugin(plugin_list, url)
+                has_support, plugin = await self.select_supported_plugin(
+                    plugin_list, url
+                )
             else:
                 logger.info("暂时不支持关闭插件支持检查")
                 return
@@ -46,15 +67,15 @@ class Download:
             chapter_info: list[ChapterInfo] = []
             for chapter_url in novel_info.chapter_urls:
                 if isinstance(chapter_url, list):
-                    chapter_info.extend(await gather(*[plugin.download(u) for u in chapter_url]))
+                    chapter_info.extend(
+                        await gather(*[plugin.download(u) for u in chapter_url])
+                    )
                 else:
                     chapter_info.append(await plugin.download(chapter_url))
 
             logger.info("下载小说章节完毕")
         except Exception as e:
             logger.error(f"下载小说失败: {e}")
-
-    async def download_novel_chapter(self, url: str): ...
 
     async def select_supported_plugin(
         self, plugin_list: list[tuple[int, BasePlugin]], url: str
